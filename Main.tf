@@ -23,6 +23,14 @@ resource "aws_security_group" "web_server_sg" {
   name        = "web-server-sg"
   description = "Allow HTTP traffic"
 
+  // Allow SSH access for management (optional, consider restricting to specific IPs for security)
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # or your IP for more security
+  }
+
   ingress {
     from_port   = var.server_port
     to_port     = var.server_port
@@ -61,7 +69,7 @@ resource "aws_security_group" "ALB_sg" {
 
 resource "aws_launch_template" "WebServerLaunchTemplate" {
   image_id  = "ami-0cc96c4cd98401dae"
-  instance_type = "t2.micro"
+  instance_type = "t3.micro"
   vpc_security_group_ids = [aws_security_group.web_server_sg.id]
 
   tags = {
@@ -70,8 +78,9 @@ resource "aws_launch_template" "WebServerLaunchTemplate" {
 
   user_data = base64encode(<<-EOF
               #!/bin/bash
-              echo "Hello, World!" > /var/www/html/index.html
-              nohup busybox httpd -f -p ${var.server_port} &
+              mkdir -p /www
+              echo "Hello, World!" > /var/www/index.html
+              nohup python3 -m http.server ${var.server_port} &
               EOF
   )
 
